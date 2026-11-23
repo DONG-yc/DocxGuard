@@ -5,7 +5,7 @@ DocxGuard 是一个用于定点更新 Word 文档的工具。它适合需要反�
 ## 可以用它做什么
 
 - **更新文字**：按原文定位并替换项目名称、日期或段落中的短语，支持一次提交多项修改。即使 Word 把一句话拆成多个格式片段，也能定位其中的文字。
-- **更新表格和配图**：在已有表格末尾追加数据行，沿用模板行的格式，并把指定图片替换为准备好的新版 PNG。这项能力目前在[表格与图片版本](https://github.com/DONG-yc/DocxGuard/tree/codex/verified-template-workflows)中提供。
+- **更新表格和配图**：在已有表格末尾追加数据行，沿用模板行的格式，并把指定图片替换为准备好的新版 PNG。
 - **让 Agent 编辑本地文档**：通过 MCP 把检查、定位、预演和发布能力提供给 AI Agent。目标有歧义时，Agent 可以根据段落、表头或图题向用户确认。
 
 ## 怎样使用
@@ -16,7 +16,7 @@ DocxGuard 是一个用于定点更新 Word 文档的工具。它适合需要反�
 2. **预演修改**，核对目标位置与替换内容。
 3. **确认并发布**，在新目录中取得输出文档和修改报告。
 
-[命令行文字编辑指南](docs/cli-plan-and-dry-run.md) · [MCP 接入指南](docs/mcp-server.md) · [表格与图片使用指南](https://github.com/DONG-yc/DocxGuard/blob/codex/verified-template-workflows/docs/mcp-server.md)
+[命令行文字编辑指南](docs/cli-plan-and-dry-run.md) · [MCP 接入指南](docs/mcp-server.md) · [项目架构与用法](docs/project-walkthrough.md)
 
 ## 适用范围
 

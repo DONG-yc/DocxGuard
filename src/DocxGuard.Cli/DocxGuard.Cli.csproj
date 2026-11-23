@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="../../scripts/table-figure-trial.py" Link="workers/table-figure.py" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <ProjectReference Include="..\DocxGuard.Core\DocxGuard.Core.csproj" />
     <PackageReference Include="ModelContextProtocol" Version="2.3.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
