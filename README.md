@@ -33,7 +33,7 @@ py -3.12 -m venv .venv
 
 ## 许可证
 
-本项目目前尚未指定开源许可证。
+DocxGuard 的自有代码采用 [MIT 许可证](LICENSE)。第三方依赖和外部素材遵循各自的许可证。
 
 ## Quick start
 
