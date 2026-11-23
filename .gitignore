@@ -1,0 +1,58 @@
+# Build outputs
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+
+# IDE and user-specific files
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+
+# Project-local toolchain and download cache
+.dotnet/
+.downloads/
+dotnet-install.ps1
+.nuget/
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Environment files and local credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.pem
+*.key
+*.pfx
+*.p12
+*.keystore
+id_rsa
+id_ed25519
+.aws/
+.ssh/
+credentials.json
+secrets.json
+appsettings.Local.json
+
+# Local agent state (keep reusable .agents/skills in source control)
+.codex/
+.codex_read/
+
+# Additional dependency, cache and generated output directories
+node_modules/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.cache/
+coverage/
+output/
+tmp/
+*.log
+
