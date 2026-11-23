@@ -1,170 +1,39 @@
 # DocxGuard
 
-DocxGuard is a contract-driven, verifiable DOCX template compiler for AI agents.
+DocxGuard 是给开发者和 AI Agent 使用的 Word 模板编辑工具。已有一份排好版的实验报告、项目周报或统计表时，可以用它精确替换文字，或在同一次操作中追加表格行并替换配图。每次修改都先生成可核对的预演结果，确认后将新 DOCX 和修改报告发布到新目录，原模板保留。
 
-The project builds editing capability through explicit trust, planning, execution, and verification boundaries rather than unrestricted document mutation.
+## 可以怎样使用
 
-## Current status
+| 场景 | 操作 | 可核对的结果 |
+|---|---|---|
+| 批量更新模板文字 | 指定原文、替换文字，必要时限定段落 | 跨格式片段定位，遇到歧义或重叠时报告原因 |
+| 更新统计报告 | 根据表头和图题选择目标，追加数据行并替换同尺寸 PNG | 查看新增行、图片引用、发生变化的文件条目和输出哈希 |
+| 通过 Agent 操作 | 使用 MCP 检查文档、澄清目标、预演修改 | 对比图有春秋两张时可以先询问；发布需启用发布工具 |
 
-Day 11 adds `DocxBuildPipeline` and a versioned JSON `BuildReport`, pairing
-verified in-memory DOCX bytes with source/output hashes, operation evidence,
-check statuses, diagnostics and entry comparisons. It captures one bounded
-source snapshot, validates the plan, executes and rebuilds through the existing
-gates. Failed builds expose no candidate artifact. See the
-[report contract](docs/build-report.md),
-[ADR 0011](docs/adr/0011-versioned-build-report.md), and
-[project progress](docs/project-progress.md).
+## 五分钟演示
 
-Day 12 exposes read-only CLI `inspect` with text/JSON output, paged paragraph
-previews and stable exit codes. See [CLI usage](docs/cli-inspect.md) and
-[ADR 0012](docs/adr/0012-read-only-inspect-cli.md).
+以下命令适用于安装了 .NET 10 SDK 和 Python 3.12 的 Windows。在仓库根目录运行，脚本会生成一份站点报告，再给表格追加 South 的 42 个样本，并同步更新柱状图。
 
-Day 13 adds source-bound JSON `plan` and full in-memory `dry-run`. Plans bind
-schema/profile, the exact source ZIP hash, main Part and all typed preconditions.
-Loading regenerates and compares the complete plan; `BuildBound` rechecks source
-identity before execution. See [usage and protocol](docs/cli-plan-and-dry-run.md)
-and [ADR 0013](docs/adr/0013-source-bound-plan-and-dry-run.md).
+```powershell
+dotnet restore DocxGuard.sln --locked-mode
+dotnet publish src/DocxGuard.Cli -c Release --no-restore -p:UseAppHost=false -o artifacts/release
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r scripts/requirements-demo.txt
+.\.venv\Scripts\python.exe scripts/demo-release.py artifacts/release/DocxGuard.Cli.dll artifacts/demo
+```
 
-Day 14 completes the single-text CLI MVP with `apply --output-dir`. A passed
-build is staged, flushed and hash-checked before its DOCX/report directory is
-published. Existing destinations are never overwritten. Failures clean only
-owned staging files and report residual paths. See [apply usage](docs/cli-apply.md)
-and [ADR 0014](docs/adr/0014-directory-publication.md).
+打开 `artifacts/demo/template.docx` 和 `artifacts/demo/result/output.docx` 比较表格和图表；同目录的 `build-report.json` 记录改动条目和哈希。再次演示时使用新的输出目录。
 
-Day 15 adds `multi-plan`, which reads a JSON request array and emits a
-source-bound multi-patch plan. Any unresolved request or overlapping target
-rejects the whole batch. See [ADR 0015](docs/adr/0015-multi-patch-conflict-plan.md).
+## 接入自己的文档
 
-Day 16 lets `dry-run` and `apply` consume the batch plan. Every operation is
-checked against the original document, and the rebuilt DOCX must pass a full
-inspection and structural diff before publication. The batch report uses the
-`docxguard.multi-text.v1` profile. See [multi-plan usage](docs/cli-multi-plan.md).
+- **文字更新**：从 `inspect` 检查段落开始，用 `plan` 或 `multi-plan` 生成计划，再运行 `dry-run` 和 `apply`。[单项计划](docs/cli-plan-and-dry-run.md) · [批量计划](docs/cli-multi-plan.md)
+- **表格与图片**：运行 `table-figure list` 获取表格序号与图片引用，准备数据和 PNG 后运行 `preview`。发布时需要提供预演的输出哈希。[组合编辑与 MCP 使用说明](docs/mcp-server.md)
+- **支持范围**：组合编辑支持 Transitional DOCX 正文中的顶层普通表格、可复制的简单末行，以及独占引用的同尺寸 PNG。合并单元格、共享图片等情况会被拒绝。分页效果需通过 Word 等排版工具另行核对。
+- **实现与验证**：[架构和演示讲解](docs/project-walkthrough.md) · [评测报告](docs/evaluation.md) · [项目进度](docs/project-progress.md)
 
-Day 17 exposes inspection, planning, and preview over local MCP stdio.
-Publication is available when the server is started with `--allow-apply`.
-See the [MCP server guide](docs/mcp-server.md).
+## 许可证
 
-Day 18 adds the repo-scoped [`docxguard-edit` Skill](.agents/skills/docxguard-edit/SKILL.md).
-With DocxGuard MCP connected, invoke `$docxguard-edit` to inspect a template,
-disambiguate exact text targets, preview the batch, and confirm the output
-directory before publication.
-
-Day 10 adds bounded DOCX rebuilding and independent structural-diff verification
-to the preconditioned in-memory text executor. The full pipeline builds on
-the Day 2 ZIP, Day 3 Content Types, Day 4 Relationships, Day 5
-WordprocessingML, Day 6 document-index, and Day 7 PatchPlan gates:
-
-- EOCD inspection that enforces entry count before .NET materializes central-directory objects;
-- configurable archive, entry-size, total-size, name-length, and compression-ratio limits;
-- strict raw UTF-8 decoding plus byte-for-byte local-header/central-directory consistency checks;
-- platform-independent rejection of absolute, traversal, backslash, encoded-separator, and malformed entry names;
-- case-insensitive and percent-decoded duplicate-name detection;
-- explicit rejection of encrypted entries;
-- exact checks for `[Content_Types].xml` and `_rels/.rels`;
-- contiguous physical-record validation, including bounded data descriptors;
-- independent bounded reads of raw Stored/Deflate spans to EOS, with actual-length, actual-ratio, and ZIP CRC-32 verification;
-- stable structured findings without extracting or modifying input files.
-
-After that preflight passes, `OpcPackageInspector` also:
-
-- safely parses `[Content_Types].xml` with DTD/external resolution disabled and explicit resource limits;
-- enforces the exact OPC namespace, element shape, attributes, extension grammar, logical part names, and media types;
-- applies Override-before-Default resolution with ASCII-only case matching;
-- maps every physical package Part to a typed logical `OpcPartName`;
-- verifies complete content-type coverage for non-Relationships Parts and
-  applies the fixed OPC content type to Relationships Parts;
-- fails closed without publishing a partial manifest or inventory.
-
-Day 4 then:
-
-- identifies the package or Part that owns each Relationships part;
-- parses every `.rels` stream with the same DTD-free, bounded XML policy;
-- validates namespace, element shape, attributes, unique IDs, absolute
-  relationship Types, and exact TargetMode values;
-- resolves internal relative targets with package-root and source-Part rules;
-- requires every internal target to exist and prohibits relationships from or
-  to Relationships parts;
-- rejects external relationships in the controlled V1 profile;
-- publishes an immutable `RelationshipGraph` only when the whole layer passes.
-
-After the OPC result passes, `DocxDocumentInspector`:
-
-- finds exactly one package-level `officeDocument` relationship instead of
-  assuming the main Part is always `/word/document.xml`;
-- supports the Transitional and Strict relationship/namespace families and
-  requires them to agree;
-- requires the target to use the macro-free DOCX main-document content type;
-- parses the verified main Part with DTD and external resolution disabled;
-- enforces separate main-document byte, character, node, depth, body-child,
-  attribute-count, and attribute-value limits;
-- verifies one `document` root, an optional `background`, exactly one
-  `body`, and final-position `sectPr`; and
-- publishes an immutable `WordMainDocumentInfo` only when the whole Word layer
-  passes.
-
-After the Word result passes, `DocxIndexInspector`:
-
-- reparses only the relationship-selected and already verified main Part with
-  the same bounded, DTD-free XML policy;
-- publishes stable paragraph, run, table, and cell IDs in document order;
-- reconstructs text split across runs while retaining half-open UTF-16 offsets
-  for mapping a match back to each source run;
-- applies an explicit visible-text profile for tabs, breaks, hyphens, objects,
-  insertions, deletions, and move revisions;
-- records nested-table and parent-cell ownership in both directions;
-- enforces independent paragraph, run, table, cell, nesting, and text limits;
-  and
-- fails closed without a partial index when structure or MCE branch ownership
-  is ambiguous.
-
-After a document index passes, `TextLocator` and `TextPatchPlanner`:
-
-- perform exact, ordinal, case-sensitive searches inside individual
-  paragraphs;
-- retain all overlapping candidates and never fall back to the first match;
-- allow explicit paragraph-ID scope to resolve repeated template text;
-- map every candidate back to half-open slices in the contributing runs;
-- publish explicit no-match, unique, ambiguous, and rejected states;
-- compile only one unique supported target into a deterministic typed
-  `PatchPlan`; and
-- attach full paragraph text, SHA-256, target range, expected text, and run
-  slices as mandatory execution preconditions.
-
-`PatchPreconditionValidator` and `InMemoryTextPatchExecutor` then:
-
-- recheck paragraph identity, complete text, SHA-256, exact target range, and
-  run slices before mutation;
-- apply disjoint planned replacements across plain, non-revised `w:t` runs;
-- preserve each run and its `w:rPr` formatting subtree;
-- map replacement tabs and LF characters to `w:tab` and `w:br`;
-- enforce operation, affected-run, generated-node, and output-byte limits;
-- re-run Word structure and document indexing against the output; and
-- publish a private-copy main-document XML artifact only when every logical
-  postcondition passes.
-
-`DocxPackageRebuilder` and `DocxStructuralDiffVerifier` now:
-
-- bind executed XML patches to the SHA-256 of the exact source package;
-- re-inspect a private source snapshot and replace the physical entry selected
-  by the main-document relationship, including encoded/nonstandard names;
-- copy all other decompressed entry bytes in source order into a new bounded ZIP;
-- enforce output archive, per-entry, and total uncompressed-size limits;
-- re-run ZIP, OPC, Word, and index checks on the completed output;
-- independently compare the entry inventory and SHA-256 of every entry;
-- verify planned text/tab/break tokens and compare all remaining main XML,
-  including run properties, section properties, namespaces, comments, and instructions;
-- reject changes outside that allowlist and publish no partial artifact; and
-- publish private-copy DOCX bytes and complete per-entry comparison evidence.
-
-Day 9/10 produce a complete DOCX **in memory**; Day 11 adds its versioned report.
-Day 14 adds directory-based disk publication. Rebuilt entries use no compression, so the
-output can be larger than the input. Existing package/XML/index limits still
-apply. An SDK-generated fixture is reopened and schema-validated in tests;
-this is not a claim of Word/LibreOffice visual compatibility or unchanged pagination.
-
-The CLI supports help, version, `inspect`, `plan`, `multi-plan`, `dry-run` and `apply`.
-Dry-run performs real execution and verification in memory. Apply publishes
-the verified DOCX and matching report into a new result directory.
+本项目目前尚未指定开源许可证。
 
 ## Quick start
 

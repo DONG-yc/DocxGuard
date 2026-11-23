@@ -72,6 +72,53 @@ internal sealed class DocxMcpTools(McpWorkspace workspace, string version)
         string outputDirectory, CancellationToken token) =>
         Run(() => Build(sourcePath, planJson, workspace.OutputDirectory(outputDirectory), token), token);
 
+    [McpServerTool(Name = "docxguard_table_figure_list", ReadOnly = true, OpenWorld = false)]
+    [Description("Find body tables and embedded pictures by headers and neighboring text. Returns source hash and identifiers for editing. Follow hasMore to inspect remaining candidates.")]
+    public Task<CallToolResult> TableFigureList(string sourcePath, int offset = 0, int limit = 50,
+        CancellationToken cancellationToken = default) => Run(() =>
+        {
+            using var source = OpenSource(sourcePath);
+            var inspection = InspectSource(source, cancellationToken);
+            if (inspection.Status != PackageInspectionStatus.Passed)
+                return Result(InspectReport.Create(version, inspection, 0, 1), true);
+            try { return Result(TableFigureCatalog.Read(inspection, offset, limit), false); }
+            catch (InvalidDataException ex) { return Error("FIG_001", ex.Message); }
+        }, cancellationToken);
+
+    [McpServerTool(Name = "docxguard_table_figure_preview", ReadOnly = true, OpenWorld = false)]
+    [Description("Preview appended table rows and a replacement PNG. Supply either requestPath or inline requestJson with sourceSha256, table, rows and imageRelationship from discovery. Paths are workspace-relative.")]
+    public Task<CallToolResult> TableFigurePreview(string sourcePath, string figurePath, string? requestPath = null,
+        string? requestJson = null,
+        CancellationToken cancellationToken = default) =>
+        TableFigure(sourcePath, requestPath, requestJson, figurePath, null, null, cancellationToken);
+
+    internal Task<CallToolResult> TableFigure(string sourcePath, string? requestPath, string? requestJson, string figurePath,
+        string? expected, string? destination, CancellationToken token) =>
+        Run(() =>
+        {
+            if ((requestPath == null) == (requestJson == null))
+                return Error("MCP_001", "Supply exactly one of requestPath and requestJson.");
+            DirectoryInfo? temp = null;
+            try
+            {
+                string path;
+                if (requestJson != null)
+                {
+                    if (Encoding.UTF8.GetByteCount(requestJson) > 4 * 1024 * 1024)
+                        return Error("MCP_001", "Inline request exceeds 4 MiB.");
+                    temp = Directory.CreateTempSubdirectory("docxguard-request-");
+                    path = Path.Combine(temp.FullName, "request.json");
+                    File.WriteAllText(path, requestJson);
+                }
+                else path = workspace.InputFile(requestPath!);
+                return Result(TableFigureCommand.Build(workspace.SourcePath(sourcePath), path,
+                    workspace.InputFile(figurePath), expected, destination == null ? null : workspace.OutputDirectory(destination),
+                    token), false);
+            }
+            catch (InvalidDataException ex) { return Error("FIG_001", ex.Message); }
+            finally { temp?.Delete(recursive: true); }
+        }, token);
+
     private CallToolResult Build(string sourcePath, string planJson, string? outputDirectory, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(planJson) || Encoding.UTF8.GetByteCount(planJson) > BoundPatchPlan.MaxSerializedBytes)
@@ -133,6 +180,13 @@ internal sealed class DocxMcpTools(McpWorkspace workspace, string version)
 
 internal sealed class DocxMcpApplyTool(DocxMcpTools tools)
 {
+    [McpServerTool(Name = "docxguard_table_figure_apply", ReadOnly = false, Destructive = false, OpenWorld = false)]
+    [Description("After approval, publish the previewed table and figure update to a new workspace directory. Requires the output SHA-256 returned by preview.")]
+    public Task<CallToolResult> TableFigureApply(string sourcePath, string figurePath,
+        string previewSha256, string outputDirectory, string? requestPath = null, string? requestJson = null,
+        CancellationToken cancellationToken = default) =>
+        tools.TableFigure(sourcePath, requestPath, requestJson, figurePath, previewSha256, outputDirectory, cancellationToken);
+
     [McpServerTool(Name = "docxguard_apply", ReadOnly = false, Destructive = false, Idempotent = true, OpenWorld = false)]
     [Description("After user approval, verify a source-bound plan and publish output.docx and build-report.json together in a new workspace directory.")]
     public Task<CallToolResult> Apply(

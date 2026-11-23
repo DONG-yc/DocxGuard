@@ -26,6 +26,8 @@ internal sealed class McpWorkspace
 
     internal string OutputDirectory(string relativePath) => Resolve(relativePath, source: false);
 
+    internal string InputFile(string relativePath) => Resolve(relativePath, source: true);
+
     private string Resolve(string relativePath, bool source)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);

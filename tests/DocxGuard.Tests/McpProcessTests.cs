@@ -18,7 +18,7 @@ public sealed class McpProcessTests : IDisposable
         await using var host = await McpProcess.Start(directory);
         JsonElement list = await host.Request("tools/list", new { });
         var tools = list.GetProperty("tools").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "docxguard_dry_run", "docxguard_inspect", "docxguard_plan" },
+        Assert.Equal(new[] { "docxguard_dry_run", "docxguard_inspect", "docxguard_plan", "docxguard_table_figure_list", "docxguard_table_figure_preview" },
             tools.Select(tool => tool.GetProperty("name").GetString()).Order(StringComparer.Ordinal));
         Assert.All(tools, tool => Assert.True(tool.GetProperty("annotations").GetProperty("readOnlyHint").GetBoolean()));
         Assert.All(tools, tool => Assert.Equal("object", tool.GetProperty("inputSchema").GetProperty("type").GetString()));
@@ -29,6 +29,8 @@ public sealed class McpProcessTests : IDisposable
         foreach (string path in new[] { "../input.docx", @"..\input.docx", Path.Combine(directory, "input.docx"), "C:input.docx" })
             AssertError(await host.Call("docxguard_inspect", new { sourcePath = path }), "MCP_001");
         Assert.Single(Directory.GetFiles(directory));
+        AssertError(await host.Call("docxguard_table_figure_preview",
+            new { sourcePath = "input.docx", requestPath = "../request.json", figurePath = "figure.png" }), "MCP_001");
     }
 
     [Fact]

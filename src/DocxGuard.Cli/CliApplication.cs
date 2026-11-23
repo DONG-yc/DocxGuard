@@ -32,6 +32,9 @@ public sealed class CliApplication
             return 0;
         }
 
+        if (arguments.Count > 0 && arguments[0] == "table-figure")
+            return TableFigureCommand.Run(arguments, output, error, cancellationToken);
+
         if (arguments.Count > 0 && arguments[0] == "inspect")
         {
             return InspectCommand.Run(arguments, _version, output, error, cancellationToken);
@@ -74,6 +77,9 @@ public sealed class CliApplication
         writer.WriteLine("  docxguard dry-run <file.docx> --plan <plan.json> [--json]");
         writer.WriteLine("  docxguard apply <file.docx> --plan <plan.json> --output-dir <new-directory> [--json]");
         writer.WriteLine("  docxguard mcp --workspace <directory> [--allow-apply]");
+        writer.WriteLine("  docxguard table-figure list <source.docx> [offset limit]");
+        writer.WriteLine("  docxguard table-figure preview <source.docx> <request.json> <figure.png>");
+        writer.WriteLine("  docxguard table-figure apply <source.docx> <request.json> <figure.png> <preview-sha256> <new-directory>");
         writer.WriteLine();
         writer.WriteLine("Options:");
         writer.WriteLine("  -h, --help     Show this help text.");

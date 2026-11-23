@@ -53,3 +53,20 @@ node scripts/eval-docxguard.mjs path/to/input.docx path/to/cases.json
 ```
 
 `success` 会预演和发布临时测试产物。`reject-plan` 检查计划阶段诊断。`reject-tampered` 在预演通过后改动计划，再检查发布是否拒绝。`paragraphScopeId` 可使用检查结果中的段落 ID。脚本将状态、诊断码、计时和结构统计输出为 JSON，正常退出表示所有预期结果一致。
+
+## Day 23 自然语言定位盲测
+
+先构建 Release CLI，再用带 python-docx、lxml 和 Pillow 的 Python 执行 `python scripts/eval-agent-targets.py prepare <新目录>`。分别将生成的 atlas、delta 工作区交给两个独立 Agent。两者只接收各自的工作区、项目编辑说明、MCP 调用方式和同一条请求。
+
+> 帮我在站点采样统计的表里追加南站 42 个样本，再用 new.png 换掉比较各站采样量的图。只预览。
+
+通过标准输入向 `python scripts/eval-mcp-call.py <分配的工作区>` 提交 JSON，method 可为 tools/list 或 tools/call，params 使用 MCP 对应参数。传输脚本只负责启动本地服务、转发调用并在工作区旁记录交互。发布权限关闭。
+
+完成后运行 `python scripts/eval-agent-targets.py check <目录>`。唯一匹配用例核对预演的目标表格、单元格内容、图片部件及原件哈希。歧义用例检查工具调用在预演前停止，并人工核对最终答复是否请用户在春季图与秋季图之间选择。两个工作区均应只保留原始输入文件。
+
+本轮首次运行中断后，两名独立 Agent 在原工作区重新执行。atlas 正确定位第 2 张表，预演追加“南站｜42”并替换春季图；delta 找到同一张表，在预演前明确询问春季还是秋季。两个源文件的哈希均与发现时一致，未发布文件。日志保留了中断前的调用，因此 atlas 有两次发现记录。本轮覆盖两个合成样本，未测试用户答复后的多轮续接。
+## Day 24 澄清后续接
+
+在 Day 23 的 delta 会话中，仅向提出澄清的原 Agent 回复“秋季图。”。验收器将澄清前的日志快照与追加的 MCP 调用分开检查。预演报告包含第 2 张表的新增行“南站｜42”，差异仅涉及主文档和秋季图片部件 `word/media/image3.png`。春季图片未列入差异。两个输入文件的 SHA-256 与回复前一致，工作区未发布新文件。本次记录是一例两轮请求。
+
+复核本机记录可运行 `python scripts/eval-agent-targets.py check artifacts/day23 --before artifacts/day24/before.jsonl`。复跑新样本时，在第一轮澄清结束后复制 delta.jsonl，向同一 Agent 提交澄清答复，再将快照路径传给 `--before`。
